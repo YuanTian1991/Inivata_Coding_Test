@@ -266,7 +266,7 @@ Now I want to organise them all into a table. **Note that the result from these 
 
 Also, I draw a barplot (extra task) to show mutation frequency in three amplicons, and labelled the mutations on the bars.
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/65cbc704-bb0b-432b-a3b4-f556ce8c7da6/Untitled.png)
+![Mutation Frequency](./MutationFrequencyBarplot.png)
 
 ## 5. Run amplicon\_3.test\_2.fa.gz
 
