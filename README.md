@@ -3,14 +3,14 @@
 The test is about Amplicon sequence mutation detection. Those amplicon sequence has been preprocessed (or maybe simulated) in `amplicon_x.fa.gz` . I need to:
 
 1. Identify mutations exist in each amplicon file. 
-2. Also, I need to extract reference sequence from fasta file, then find out what is the nature mutation in corresponding amplicon. 
+2. I need to extract reference sequence from fasta file, then find out what is the nature mutation in corresponding amplicon. 
 3. An additional task is to find gene name, by maching amplicon coordinates with a gene list bed file. 
-4. The instruction is not required, but since there are multiple `amplicon_x.fa.gz`, it’s better to have a function to automate the analysis work.
+4. The instruction is not required, but since there are multiple `amplicon_x.fa.gz` files, it’s better to have a function to automate the analysis work.
 5. Finally, I need to draw a barplot to show mutation frequency for each amplicon.
 
 ## 1. Mutation Detection
 
-Since all amplicons are matched on character in string, thus I wrote below R function to quickly identify mutations for each chr in string. In other word, for each base. The idea is based on the fact that all amplicon sequences in one file have exactly the same length, thus I can convert all sequences into a matrix, then use column functions to identify mutation.
+Since all amplicons are matched on character in string, thus I wrote [an R function](https://github.com/YuanTian1991/Inivata_Coding_Test/tree/main/S01_MutationDetection) to quickly identify mutations for each character (base) in string. The idea is based on the fact that all amplicon sequences in one file have exactly the same length, thus I can convert all sequences into a matrix, then use column functions to identify mutation.
 
 In below function, there is only one parameter:
 
@@ -39,7 +39,7 @@ MutationDetection <- function(csv) {
 }
 ```
 
-Below is the result. After feeding with `amplicon_1.fa.gz` file,  we get the result that the mutation position is 58 on this amplicon. And on that position, there are 186 C and 14 T.
+Below is the result. After feeding with `amplicon_1.fa.gz` file,  we get the result that the mutation position is the 58th on this amplicon. And on that mutation position, there are 186 C and 14 T.
 
 ```r
 > result <- MutationDetection("./amplicon_1.fa.gz")
@@ -54,6 +54,8 @@ T   14
 
 >
 ```
+
+In this case, I have not compare the sequence with reference, thus I currently don't know which one is nature, and which one is mutation.
 
 ### 1.1. Merge amplicon\_1 and amplicon\_2
 
@@ -74,7 +76,7 @@ T   17
 >
 ```
 
-So the mutation position is at 4. By checking the position, it’s the same base that have mutation in both these two amplicon files.
+So the mutation position is at 4. **By checking the position, it’s the same base that have mutation in both these two amplicon files**.
 
 In `amplicon_1.fa.gz` the mutation position is: 55181320 + 58 = 55181378
 
@@ -94,9 +96,11 @@ Thus, to report frequency for each mutation, we should join the results from `am
 >
 ```
 
+This is the frequency of two bases (C/T) in gene ENSE00001601336. 
+
 ## 2. Identify Gene Name
 
-After figure out how to identify mutation, my next task is to fine which gene are these amplicons come from. It looks to me, I just need to map the coordinates with the different bed file  table, I can find which gene is located.
+After figure out how to identify mutation, my next task is to fine which gene are these amplicons come from. By checking file information, I think just need to map the coordinates with the different bed file  table, I can find which gene is located. Here I used `GenomicRanges` R package, which have a nice function `findOverlaps` to overlap two data.frame.
 
 In below function, there are two parameters:
 
@@ -130,7 +134,7 @@ IdentifyGene <- function(geneBed, coordinateBed) {
 }
 ```
 
-Below one sample how I found genes for `amplicon_x.fa.gz` 
+Below are samples how I found genes for `gene1.bed` and `gene2.bed`.
 
 ```r
 > IdentifyGene("../Data/gene1.bed", "../Data/amplicon_coordinates.bed")
@@ -143,17 +147,20 @@ ENSE00003527888     chr7 140776912 140777088   176
 >
 ```
 
-So, for amplicon\_1 and amplicon\_2, the gene related is: `ENSE00001601336` . For amplicon\_3, the gene related is: `ENSE00003527888` .
+As above result shows, for amplicon\_1 and amplicon\_2, the gene (gene1) related is: `ENSE00001601336` . For amplicon\_3, the gene (gene2) related is: `ENSE00003527888` .
 
 ## 3. Extract sequence from Reference
 
-Then, I need to find a way to extract sequence from fasta reference file. Actually after searching around, I did not found a very direct solution. So I wrote below function to extract sequence. In below function, it requires 4 parameters, the reference fasta file path, and `chr` , `start` and `end` for sequence you want to extract.
+Then, I need to find a way to extract sequence from reference fasta reference file. After searching around, I did not found direct tool for this solution. So I wrote below function to extract sequence. In below function, it requires 4 parameters, the reference fasta file path, and `chr` , `start` and `end` for sequence you want to extract.
 
-The idea is to use R package `seqinr` to read into reference fasta file, it will convert each chromosome into a long vector. Then in the coordiniate file, we know the chr, start, and end for each amplicon. We can then directly extract subset of vector as sequence, and convert it back from vector to string, and convert to to uppercase.
+The idea is to use R package `seqinr` to read into reference fasta file, it will convert each chromosome string into a long vector. Then in the coordiniate file, we can find the chr, start, and end for each amplicon. We can then directly extract subset of vector as sequence, and convert it back from vector to string, and convert to to uppercase.
 
 Below is the function:
 
 - refPath is the path for reference file, in this case it’s the `genome.fa.gz` file.
+- chr: chromosome of amplicon.
+- start: start for amplicon.
+- end: end for amplicon.
 
 ```r
 library("seqinr")
@@ -167,7 +174,7 @@ getSeqFromReference <- function(refPath, chr, start, end) {
 }
 ```
 
-Below is the running result. The code successfully extracted the reference sequence for amplicon 1. And I checked, the 58th base is `C` in the reference sequence, thus, the nature of the mutation on base 58 is `C->T`.
+Below is the running result. The code successfully extracted the reference sequence for amplicon1. After extraction of reference sequence, we know the nature of mutation. For example, for amplicon 1, the 58th base is `C` in the reference sequence, thus, the nature of the mutation on base 58 is `C->T
 
 ```r
 > RefSeq <- getSeqFromReference("../Data/genome.fa.gz", "chr7", 55181321, 55181390)
@@ -177,15 +184,14 @@ Below is the running result. The code successfully extracted the reference seque
 [1] "C"
 ```
 
-Actually, I think this solution is not very efficient. It’s better to directly extract string sequence. If I have more time, I will seek a faster way.
+Actually, I think this solution is not very efficient. It’s better to directly munipulate string sequence. If this is functionality if vital for my future work, I will seek a faster way.
 
-</aside>
 
-## 4. Wrap up into a general solution
+## 4. Wrap up into a general function: AmpliconAnalysis()
 
-In above three sections, I have shown how I 1): Find mutation from a list of amplicon sequence; 2): Get gene name by overlap candidate gene bed file with amplicon and 3): Get reference sequence to decided nature of mutation. Now I want to wrap them up into a function, along with visualisations.
+In above three sections, I have shown how I 1): Find mutation from a list of amplicon sequence; 2): Get gene name by overlap candidate gene bed file with amplicon and 3): Get reference sequence to decided nature of mutation. Now I want to wrap them up into a function.
 
-The function is just an integration of above 3 functions, and contains some data organisation for mutation information. The full code is here. The function is `./AmpliconAnalysis.R`. It contains 5 parameters:
+The function is just an integration of above 3 functions, and contains some data organisation for mutation information. The full code is [here](https://github.com/YuanTian1991/Inivata_Coding_Test/blob/main/AmpliconAnalysis.R). The function is. It contains 5 parameters:
 
 - ampliconFile: path to amplicon sequence file.
 - referenceFile: path to reference sequence file.
@@ -304,7 +310,7 @@ $referenceSequence
 
 ## Summary
 
-This is a very good coding test among all coding test I have done, which involved with file processing, string manipulation, data structure organising, and automation with function. 
+This is a very good coding test among all coding test I have done, which involved with file processing, string manipulation, data organising, and automation with function. 
 
 To address this test, I wrote a function `AmpliconAnalysis()` to preprocess amplicon files along with reference/gene data all together, and return all mutations existing in this amplicon.
 
